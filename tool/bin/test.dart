@@ -26,6 +26,7 @@ Suite _suite;
 String _filterPath;
 String _customInterpreter;
 List<String> _customArguments;
+var _loose_mode = false;
 
 final _allSuites = <String, Suite>{};
 final _cSuites = <String>[];
@@ -49,6 +50,8 @@ void main(List<String> arguments) {
   parser.addOption("interpreter", abbr: "i", help: "Path to interpreter.");
   parser.addMultiOption("arguments",
       abbr: "a", help: "Additional interpreter arguments.");
+  parser.addFlag(
+      "loose_mode", defaultsTo: false, help: "For all expected failures, only check exit-code, stdout/stderr will be ignored.");
 
   var options = parser.parse(arguments);
 
@@ -73,6 +76,10 @@ void main(List<String> arguments) {
       _usageError(parser,
           "Must pass an interpreter path if providing custom arguments.");
     }
+  }
+
+  if (options.wasParsed("loose_mode")) {
+    _loose_mode = options["loose_mode"];
   }
 
   if (suite == "all") {
@@ -304,10 +311,12 @@ class Test {
     var errorLines = const LineSplitter().convert(result.stderr as String);
 
     // Validate that an expected runtime error occurred.
-    if (_expectedRuntimeError != null) {
-      _validateRuntimeError(errorLines);
-    } else {
-      _validateCompileErrors(errorLines);
+    if (!_loose_mode) {
+      if (_expectedRuntimeError != null) {
+        _validateRuntimeError(errorLines);
+      } else {
+        _validateCompileErrors(errorLines);
+      }
     }
 
     _validateExitCode(result.exitCode, errorLines);
